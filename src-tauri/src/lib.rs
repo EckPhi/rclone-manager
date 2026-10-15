@@ -1,18 +1,24 @@
+pub mod runtime;
+
 mod core;
 mod rclone;
 pub mod utils;
 
-#[cfg(feature = "web-server")]
+#[cfg(any(feature = "web-server", feature = "native-headless"))]
 mod server;
 
 use std::sync::{Arc, atomic::AtomicBool};
 
+use crate::runtime::Manager;
 use clap::Parser;
-use tauri::Manager;
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 use tauri::WindowEvent;
 
-#[cfg(all(desktop, feature = "tray", not(feature = "web-server")))]
+#[cfg(all(
+    desktop,
+    feature = "tray",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 use crate::core::tray::actions::handle_browse_remote;
 #[cfg(all(desktop, feature = "tray"))]
 use crate::core::tray::{
@@ -65,10 +71,15 @@ fn build_send_to_params(
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[cfg(not(feature = "native-headless"))]
 pub fn run() {
     // WebKitGTK rendering workarounds (NVIDIA only) must be applied before any
     // webview is created; skipped in headless web-server and mobile builds.
-    #[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+    #[cfg(all(
+        desktop,
+        target_os = "linux",
+        not(any(feature = "web-server", feature = "native-headless"))
+    ))]
     crate::utils::app::platform::apply_linux_graphics_quirks();
 
     let cli_args: crate::core::cli::CliArgs = match crate::core::cli::CliArgs::try_parse() {
@@ -85,7 +96,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default();
     builder = builder.manage(cli_args.clone());
 
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     {
         builder = crate::utils::app::protocol::register_protocols(builder);
     }
@@ -103,7 +114,7 @@ pub fn run() {
 
         builder = builder.plugin(
             si_builder
-                .callback(|app: &tauri::AppHandle, argv, cwd| {
+                .callback(|app: &crate::runtime::AppHandle, argv, cwd| {
                     if let Ok(cli_args) = <crate::core::cli::CliArgs as clap::Parser>::try_parse_from(&argv) && let Some(remote) = cli_args.general.send_to_remote {
                             let path = cli_args.general.send_to_path;
                             let sources = cli_args.general.send_to_sources;
@@ -128,10 +139,10 @@ pub fn run() {
                             return;
                     }
 
-                    #[cfg(feature = "web-server")]
+                    #[cfg(any(feature = "web-server", feature = "native-headless"))]
                     log::info!("Another instance attempted to run with args: {argv:?}");
 
-                    #[cfg(not(feature = "web-server"))]
+                    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
                     {
                         let app_clone = app.clone();
                         crate::utils::spawn(async move {
@@ -154,7 +165,7 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
 
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     {
         #[cfg(feature = "tauri-plugin-deep-link")]
         {
@@ -238,7 +249,7 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_opener::init());
     }
 
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     {
         builder = builder
             .plugin(tauri_plugin_dialog::init())
@@ -246,7 +257,10 @@ pub fn run() {
             .plugin(tauri_plugin_clipboard_manager::init());
     }
 
-    #[cfg(not(any(feature = "mobile", feature = "web-server")))]
+    #[cfg(not(any(
+        feature = "mobile",
+        any(feature = "web-server", feature = "native-headless")
+    )))]
     {
         builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
     }
@@ -258,7 +272,7 @@ pub fn run() {
         builder = builder.on_menu_event(|app, event| handle_tray_menu_event(app, &event));
     }
 
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     {
         builder = builder.invoke_handler(crate::core::commands::dispatch_invoke);
     }
@@ -267,13 +281,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     {
         log::info!("Tauri event loop starting (Web Server Mode)");
         app.run(|_app_handle, _event| {});
     }
 
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     {
         app.run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
@@ -307,14 +321,17 @@ pub fn run() {
 }
 
 fn setup_app(
-    app: &mut tauri::App,
+    app: &mut crate::runtime::App,
     cli_args: crate::core::cli::CliArgs,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let app_handle = app.handle();
 
     let event_bridge = Arc::new(crate::core::bridge::EventBridge::new(1000));
     crate::core::bridge::init_event_bridge(event_bridge.clone());
-    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
+    #[cfg(any(
+        not(any(feature = "web-server", feature = "native-headless")),
+        feature = "tray"
+    ))]
     event_bridge.set_app_handle(app_handle.clone());
     app.manage(event_bridge.clone());
 
@@ -332,7 +349,7 @@ fn setup_app(
     }
 
     // Clean up temporary file preview/viewer cache from previous sessions
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     crate::utils::io::file_helper::cleanup_temp_views(app_handle);
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -383,7 +400,7 @@ fn setup_app(
 
     #[cfg(feature = "updater")]
     app.manage(utils::types::updater::AppUpdaterState::default());
-    #[cfg(feature = "updater")]
+    #[cfg(not(feature = "librclone"))]
     app.manage(utils::types::updater::RcloneUpdaterState::default());
     app.manage(utils::types::provision::ProvisionState::default());
 
@@ -415,7 +432,7 @@ fn setup_app(
             all(
                 target_os = "linux",
                 not(feature = "flatpak"),
-                not(feature = "web-server")
+                not(any(feature = "web-server", feature = "native-headless"))
             ),
             all(debug_assertions, windows)
         )
@@ -425,7 +442,7 @@ fn setup_app(
         app.deep_link().register_all()?;
     }
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     {
         use crate::server::start_web_server;
 
@@ -469,7 +486,11 @@ fn setup_app(
         });
     }
 
-    #[cfg(all(desktop, not(feature = "web-server"), feature = "tray"))]
+    #[cfg(all(
+        desktop,
+        not(any(feature = "web-server", feature = "native-headless")),
+        feature = "tray"
+    ))]
     if !cli_args.general.tray && cli_args.general.send_to_remote.is_none() {
         log::debug!("Creating main window");
         utils::app::builder::create_app_window(app.handle().clone());
@@ -520,24 +541,24 @@ fn setup_app(
         });
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(feature = "native-headless")))]
     crate::utils::app::platform::update_macos_dock_visibility(app.handle());
 
     Ok(())
 }
 
 #[cfg(all(desktop, feature = "tray"))]
-fn handle_tray_menu_event(app: &tauri::AppHandle, event: &tauri::menu::MenuEvent) {
+fn handle_tray_menu_event(app: &crate::runtime::AppHandle, event: &tauri::menu::MenuEvent) {
     if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
         dispatch_tray_action(app, action);
     }
 }
 
 #[cfg(all(desktop, feature = "tray"))]
-fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
+fn dispatch_tray_action(app: &crate::runtime::AppHandle, action: TrayAction) {
     use crate::utils::types::remotes::OperationType;
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     use tauri_plugin_opener::OpenerExt;
 
     match action {
@@ -580,14 +601,14 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             handle_stop_workflow(app.clone(), id);
         }
         TrayAction::Browse(_remote, _profile) => {
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             handle_browse_remote(app, &_remote, &_profile);
         }
         TrayAction::BrowseInApp(remote) => {
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             core::tray::actions::handle_browse_in_app(app, Some(&remote));
 
-            #[cfg(feature = "web-server")]
+            #[cfg(any(feature = "web-server", feature = "native-headless"))]
             {
                 let url = web_ui_url(app, &format!("/nautilus/{}", urlencoding::encode(&remote)));
                 if let Err(e) = app.opener().open_url(&url, None::<&str>) {
@@ -623,10 +644,10 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             });
         }
         TrayAction::OpenFileBrowser => {
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             core::tray::actions::handle_browse_in_app(app, None);
 
-            #[cfg(feature = "web-server")]
+            #[cfg(any(feature = "web-server", feature = "native-headless"))]
             {
                 let url = web_ui_url(app, "/nautilus");
                 if let Err(e) = app.opener().open_url(&url, None::<&str>) {
@@ -635,11 +656,11 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
             }
         }
         TrayAction::ShowApp => {
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             core::tray::actions::show_main_window(app.clone());
         }
         TrayAction::OpenWebUI => {
-            #[cfg(feature = "web-server")]
+            #[cfg(any(feature = "web-server", feature = "native-headless"))]
             {
                 let url = web_ui_url(app, "");
                 if let Err(e) = app.opener().open_url(&url, None::<&str>) {
@@ -656,8 +677,11 @@ fn dispatch_tray_action(app: &tauri::AppHandle, action: TrayAction) {
     }
 }
 
-#[cfg(all(feature = "web-server", feature = "tray"))]
-fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
+#[cfg(all(
+    any(feature = "web-server", feature = "native-headless"),
+    feature = "tray"
+))]
+fn web_ui_url(app: &crate::runtime::AppHandle, path: &str) -> String {
     let args = app.state::<crate::core::cli::CliArgs>();
     let host = if args.headless.host == "0.0.0.0" {
         "127.0.0.1"
@@ -670,4 +694,27 @@ fn web_ui_url(app: &tauri::AppHandle, path: &str) -> String {
         "http"
     };
     format!("{scheme}://{host}:{}{path}", args.headless.port)
+}
+
+/// Run the browser server without a desktop event loop or graphics libraries.
+#[cfg(feature = "native-headless")]
+pub fn run() {
+    let cli_args = match crate::core::cli::CliArgs::try_parse() {
+        Ok(args) => {
+            if let Err(error) = args.validate() {
+                eprintln!("Invalid CLI arguments: {error}");
+                std::process::exit(1);
+            }
+            args
+        }
+        Err(error) => error.exit(),
+    };
+    let mut app = crate::runtime::App::new();
+    app.manage(cli_args.clone());
+    if let Err(error) = setup_app(&mut app, cli_args) {
+        eprintln!("Failed to initialize server: {error}");
+        std::process::exit(1);
+    }
+    let exit_code = tokio::runtime::Handle::current().block_on(app.wait_for_exit());
+    std::process::exit(exit_code);
 }

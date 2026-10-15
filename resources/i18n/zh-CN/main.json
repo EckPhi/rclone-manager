@@ -2907,7 +2907,8 @@
       "automationNotFound": "未找到自动化"
     },
     "system": {
-      "unlockFailed": "解锁失败：{{error}}"
+      "unlockFailed": "解锁失败：{{error}}",
+      "managedRestartRequired": "请通过软件包管理器重启此服务。"
     },
     "remote": {
       "configFailed": "配置远程存储失败：{{error}}",

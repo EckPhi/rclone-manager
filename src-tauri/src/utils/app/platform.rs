@@ -47,9 +47,9 @@ pub fn check_pending_app_exit() -> Option<ActiveOperationsSummary> {
 }
 
 pub async fn get_active_operations_summary(
-    app: tauri::AppHandle,
+    app: crate::runtime::AppHandle,
 ) -> Result<ActiveOperationsSummary, String> {
-    use tauri::Manager;
+    use crate::runtime::Manager;
     let backend_manager = app.state::<crate::rclone::backend::BackendManager>();
 
     let active_jobs = backend_manager.job_cache.get_active_jobs().await;
@@ -72,20 +72,20 @@ pub async fn get_active_operations_summary(
 }
 
 #[bridge]
-pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
+pub async fn request_app_exit(app: crate::runtime::AppHandle) -> Result<(), String> {
     #[cfg(all(
         desktop,
-        not(feature = "web-server"),
+        not(any(feature = "web-server", feature = "native-headless")),
         not(any(target_os = "android", target_os = "ios"))
     ))]
-    use tauri::Manager;
+    use crate::runtime::Manager;
 
     let summary = get_active_operations_summary(app.clone()).await?;
 
     if summary.has_active_operations {
         #[cfg(all(
             desktop,
-            not(feature = "web-server"),
+            not(any(feature = "web-server", feature = "native-headless")),
             not(any(target_os = "android", target_os = "ios"))
         ))]
         {
@@ -104,10 +104,34 @@ pub async fn request_app_exit(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[bridge]
-pub async fn relaunch_app(app: tauri::AppHandle) -> Result<(), String> {
+#[cfg(not(feature = "native-headless"))]
+pub async fn relaunch_app(app: crate::runtime::AppHandle) -> Result<(), String> {
     use crate::core::lifecycle::shutdown::handle_shutdown;
     handle_shutdown(app.clone()).await;
     app.restart();
+}
+
+#[bridge]
+#[cfg(feature = "native-headless")]
+pub async fn relaunch_app(_app: crate::runtime::AppHandle) -> Result<(), String> {
+    Err(crate::localized_error!(
+        "backendErrors.system.managedRestartRequired"
+    ))
+}
+
+#[cfg(all(test, feature = "native-headless"))]
+mod native_tests {
+    #[tokio::test]
+    async fn rejected_relaunch_keeps_server_running() {
+        let app = crate::runtime::App::new();
+        let error = super::relaunch_app(app.clone()).await.unwrap_err();
+        assert_eq!(error, "backendErrors.system.managedRestartRequired");
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(10), app.wait_for_exit())
+                .await
+                .is_err()
+        );
+    }
 }
 
 #[cfg(all(target_os = "linux", feature = "flatpak"))]
@@ -215,9 +239,9 @@ pub async fn manage_flatpak_background_portal(enable: bool) -> Result<(), String
 //     }
 // }
 
-#[cfg(target_os = "macos")]
-pub fn update_macos_dock_visibility(app_handle: &tauri::AppHandle) {
-    use tauri::Manager;
+#[cfg(all(target_os = "macos", not(feature = "native-headless")))]
+pub fn update_macos_dock_visibility(app_handle: &crate::runtime::AppHandle) {
+    use crate::runtime::Manager;
     let has_visible_windows = app_handle
         .webview_windows()
         .values()
@@ -261,7 +285,11 @@ pub fn is_updater_enabled() -> bool {
 ///
 /// **Wayland + NVIDIA < 515**: `WEBKIT_DISABLE_DMABUF_RENDERER` is additionally
 /// set, as older drivers do not reliably support DMABuf on Wayland.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(
+    desktop,
+    target_os = "linux",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 // Sound: invoked from main() single-threaded, before the async runtime spawns threads.
 #[allow(clippy::disallowed_methods)]
 pub fn apply_linux_graphics_quirks() {
@@ -307,7 +335,11 @@ pub fn apply_linux_graphics_quirks() {
 /// Checks `XDG_SESSION_TYPE=wayland` (set by the login manager) and
 /// `WAYLAND_DISPLAY` (set by the compositor). Either variable being present
 /// indicates a Wayland session.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(
+    desktop,
+    target_os = "linux",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 fn is_wayland_session() -> bool {
     std::env::var("XDG_SESSION_TYPE").is_ok_and(|v| v.eq_ignore_ascii_case("wayland"))
         || std::env::var("WAYLAND_DISPLAY").is_ok()
@@ -323,7 +355,11 @@ fn is_wayland_session() -> bool {
 ///
 /// Detection relies on `XDG_CURRENT_DESKTOP` and `XDG_SESSION_DESKTOP`, which the
 /// desktop environment sets in the user session environment.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(
+    desktop,
+    target_os = "linux",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 fn is_strict_wayland_compositor() -> bool {
     ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP"]
         .iter()
@@ -345,7 +381,11 @@ fn is_strict_wayland_compositor() -> bool {
 /// ```text
 /// NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  515.43.04  Release Build ...
 /// ```
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(
+    desktop,
+    target_os = "linux",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 fn nvidia_driver_version() -> Option<u32> {
     let content = std::fs::read_to_string("/proc/driver/nvidia/version").ok()?;
     // The version token looks like "515.43.04" — take the major part.
@@ -365,12 +405,21 @@ fn nvidia_driver_version() -> Option<u32> {
 /// **Nouveau** (the community reverse-engineered driver) does **not** create this
 /// file, so this function correctly returns `false` for Nouveau users, avoiding
 /// unnecessary WebKit rendering quirks that would degrade performance.
-#[cfg(all(desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(
+    desktop,
+    target_os = "linux",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 fn nvidia_proprietary_driver_loaded() -> bool {
     std::path::Path::new("/proc/driver/nvidia/version").exists()
 }
 
-#[cfg(all(test, desktop, target_os = "linux", not(feature = "web-server")))]
+#[cfg(all(
+    test,
+    desktop,
+    target_os = "linux",
+    not(any(feature = "web-server", feature = "native-headless"))
+))]
 mod graphics_quirks_tests {
     use super::{is_strict_wayland_compositor, is_wayland_session};
 

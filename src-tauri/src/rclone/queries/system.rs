@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use crate::runtime::{AppHandle, Manager};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
 
 use crate::{
     core::bridge,

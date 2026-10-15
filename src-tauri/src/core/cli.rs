@@ -9,13 +9,13 @@ use std::path::PathBuf;
 /// `RClone` Manager CLI Arguments
 #[derive(Parser, Debug, Clone)]
 #[command(name = "rclone-manager")]
-#[cfg_attr(feature = "web-server", command(about = "RClone Manager - Headless Web UI for Rclone", long_about = None))]
-#[cfg_attr(not(feature = "web-server"), command(about = "RClone Manager - Desktop GUI for Rclone", long_about = None))]
+#[cfg_attr(any(feature = "web-server", feature = "native-headless"), command(about = "RClone Manager - Headless Web UI for Rclone", long_about = None))]
+#[cfg_attr(not(any(feature = "web-server", feature = "native-headless")), command(about = "RClone Manager - Desktop GUI for Rclone", long_about = None))]
 pub struct CliArgs {
     #[command(flatten)]
     pub general: GeneralArgs,
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     #[command(flatten)]
     pub headless: HeadlessArgs,
 }
@@ -53,7 +53,7 @@ pub struct GeneralArgs {
 }
 
 /// Headless web server specific arguments
-#[cfg(feature = "web-server")]
+#[cfg(any(feature = "web-server", feature = "native-headless"))]
 #[derive(Args, Debug, Clone)]
 pub struct HeadlessArgs {
     /// Host address to bind to
@@ -89,7 +89,7 @@ pub struct HeadlessArgs {
 impl CliArgs {
     /// Validates the CLI arguments for logical consistency.
     pub fn validate(&self) -> Result<(), String> {
-        #[cfg(feature = "web-server")]
+        #[cfg(any(feature = "web-server", feature = "native-headless"))]
         {
             // Auth validation: both user and pass must be present or both absent
             match (&self.headless.user, &self.headless.pass) {
@@ -136,7 +136,7 @@ impl CliArgs {
     }
 
     /// Returns auth credentials if both user and pass are set
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     pub fn auth_credentials(&self) -> Option<(String, String)> {
         match (&self.headless.user, &self.headless.pass) {
             (Some(u), Some(p)) => Some((u.clone(), p.clone())),
@@ -194,7 +194,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     #[test]
     fn test_headless_full_args() {
         let args = CliArgs::parse_from([
@@ -221,7 +221,7 @@ mod tests {
         assert!(args.validate().is_ok());
     }
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     #[test]
     fn test_validate_headless_tls() {
         let args = CliArgs::parse_from(["rclone-manager", "--tls-cert", "/path/to/cert"]);

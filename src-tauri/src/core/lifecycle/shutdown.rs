@@ -1,6 +1,6 @@
+use crate::runtime::{AppHandle, Manager};
 use log::{debug, error, info};
 use serde_json::json;
-use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{automation::engine::AutomationScheduler, bridge},
@@ -121,7 +121,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     }
 
     // Clear temporary file preview/viewer cache files
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     crate::utils::io::file_helper::cleanup_temp_views(&app_handle);
 
     #[cfg(any(feature = "updater", not(feature = "librclone")))]

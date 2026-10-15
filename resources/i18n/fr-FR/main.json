@@ -2907,7 +2907,8 @@
       "automationNotFound": "Automatisation non trouvée"
     },
     "system": {
-      "unlockFailed": "Échec du déblocage : {{error}}"
+      "unlockFailed": "Échec du déblocage : {{error}}",
+      "managedRestartRequired": "Redémarrez ce service depuis votre gestionnaire de paquets."
     },
     "remote": {
       "configFailed": "Échec de la configuration du dépôt distant : {{error}}",

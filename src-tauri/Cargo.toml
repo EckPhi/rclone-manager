@@ -20,7 +20,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 bridge-macro = { path = "crates/bridge-macro" }
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = [], optional = true }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -61,7 +61,7 @@ tauri-plugin-os = { version = "2", optional = true, default-features = false }
 tauri-plugin-opener = { version = "2", optional = true, default-features = false }
 
 # rcman - Rust Config Manager library
-rcman = { version = "0.2", features = ["backup", "derive", "profiles", "keychain", "encrypted-file"] }
+rcman = { version = "0.2", features = ["backup", "derive", "profiles", "encrypted-file"] }
 
 urlencoding = "2"
 futures = "0.3"
@@ -101,8 +101,8 @@ windows = { version = "0.62", features = ["Networking_Connectivity"] }
 winreg = "0.56"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-autostart = "2"
-tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = { version = "2", optional = true }
+tauri-plugin-single-instance = { version = "2", optional = true }
 tauri-plugin-window-state = { version = "2", optional = true, default-features = false }
 tauri-plugin-updater = { version = "2", features = ["rustls-tls"], optional = true, default-features = false }
 
@@ -111,15 +111,20 @@ updater = ["dep:tauri-plugin-updater"]
 tauri-plugin-notification = ["dep:tauri-plugin-notification"]
 tauri-plugin-deep-link = ["dep:tauri-plugin-deep-link"]
 
-web-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow", "updater"]
+http-server = ["axum", "tower-http", "async-stream", "axum-server", "anyhow"]
+web-server = ["rcman/keychain", "http-server", "dep:tauri", "dep:tauri-plugin-autostart", "dep:tauri-plugin-single-instance", "updater"]
+native-headless = ["http-server"]
 
 # Container
 container = ["web-server"]
 
-shared-tauri = ["tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
+shared-tauri = ["rcman/keychain", "dep:tauri", "dep:tauri-plugin-autostart", "dep:tauri-plugin-single-instance", "tauri-plugin-dialog/xdg-portal", "tauri-plugin-notification", "tauri-plugin-deep-link", "tauri-plugin-clipboard-manager", "tauri-plugin-os", "tauri-plugin-opener"]
 
 # For GUI features
 desktop = [
+    "dep:tauri",
+    "dep:tauri-plugin-autostart",
+    "dep:tauri-plugin-single-instance",
     "tauri-plugin-window-state",
     "tauri/devtools",
     "updater",
@@ -130,7 +135,7 @@ desktop = [
     "dep:objc2",
     "dep:objc2-foundation",
 ]
-tray = ["tauri/tray-icon", "tauri/image-png", "tauri-plugin-opener"]
+tray = ["tauri/tray-icon", "tauri/image-png", "tauri/test", "tauri-plugin-opener"]
 default = ["desktop", "tray"]
 
 # Managed by package managers or not compatible with updater
@@ -140,7 +145,3 @@ flatpak = ["desktop", "tray"]
 # In-process rclone via librclone FFI (mobile target).
 librclone = []
 mobile = ["librclone", "shared-tauri"]
-
-
-[dev-dependencies]
-tauri = { version = "2", features = ["test"] }

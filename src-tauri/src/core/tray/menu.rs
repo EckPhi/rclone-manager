@@ -49,14 +49,14 @@ impl MenuPlan {
     pub fn build(snapshot: &TraySnapshot, max_tray_items: usize) -> Self {
         let mut items: Vec<MenuItemKind> = Vec::new();
 
-        #[cfg(not(feature = "web-server"))]
+        #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
         items.push(MenuItemKind::Regular(RegularItem {
             id: TrayAction::ShowApp.to_id(),
             label: t!("tray.showApp"),
             enabled: true,
         }));
 
-        #[cfg(feature = "web-server")]
+        #[cfg(any(feature = "web-server", feature = "native-headless"))]
         items.push(MenuItemKind::Regular(RegularItem {
             id: TrayAction::OpenWebUI.to_id(),
             label: t!("tray.openWebUI"),

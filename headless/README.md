@@ -24,9 +24,17 @@
 - **NAS Devices** (Unraid, Synology, TrueNAS)
 - **Docker Environments**
 
+### Native Synology DSM package (experimental)
+
+A native `.spk` test package is available for the **DS920+ on DSM 7.2.1**. It
+serves the same browser interface without Container Manager, GTK, WebKitGTK or
+Xvfb. See the [Synology build and installation guide](../synology/README.md) for
+package creation, authentication, shared-folder permissions and NAS acceptance
+checks. Installation on a physical NAS still needs verification.
+
 ### ⚠️ Architecture Note (Tauri + Xvfb)
 
-This is a **headless desktop application**, not a native web server. It uses **Xvfb** (Virtual Framebuffer) to run the GUI in the background and streams the interface to your browser.
+The existing Docker and desktop-based headless builds use **Xvfb** (Virtual Framebuffer) to run the Tauri runtime in the background while the web server serves the browser interface. The experimental native Synology build does not need this desktop runtime.
 
 - **Docker:** Handles all dependencies automatically (Recommended).
 - **Binary:** Requires `xvfb`, `gtk3`, and `webkit2gtk` installed on your system.

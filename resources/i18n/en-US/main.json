@@ -2948,7 +2948,8 @@
       "automationNotFound": "Automation not found"
     },
     "system": {
-      "unlockFailed": "Unlock failed: {{error}}"
+      "unlockFailed": "Unlock failed: {{error}}",
+      "managedRestartRequired": "Restart this service through your package manager."
     },
     "remote": {
       "configFailed": "Failed to configure remote: {{error}}",

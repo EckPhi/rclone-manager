@@ -1,10 +1,10 @@
 #[cfg(feature = "tray")]
-pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
+pub async fn setup_tray(app: crate::runtime::AppHandle) -> tauri::Result<()> {
     let app_clone = app.clone();
     use crate::core::settings::AppSettingsManager;
     use crate::core::tray::TraySnapshot;
     use crate::core::tray::menu::{MenuPlan, create_tray_menu_from_plan};
-    use tauri::Manager;
+    use crate::runtime::Manager;
 
     let snapshot = TraySnapshot::fetch(&app_clone).await?;
 
@@ -37,7 +37,7 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
             .tooltip(crate::t!("tray.tooltipDefault"))
             .menu(&tray_menu);
 
-        #[cfg(not(feature = "web-server"))]
+        #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
         {
             tray = tray.on_tray_icon_event(move |tray, event| {
                 if let tauri::tray::TrayIconEvent::DoubleClick {
@@ -58,10 +58,10 @@ pub async fn setup_tray(app: tauri::AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 fn apply_platform_config(
-    builder: tauri::WebviewWindowBuilder<'_, tauri::Wry, tauri::AppHandle>,
-) -> tauri::WebviewWindowBuilder<'_, tauri::Wry, tauri::AppHandle> {
+    builder: tauri::WebviewWindowBuilder<'_, tauri::Wry, crate::runtime::AppHandle>,
+) -> tauri::WebviewWindowBuilder<'_, tauri::Wry, crate::runtime::AppHandle> {
     #[allow(unused_mut)]
     let mut b = builder
         .inner_size(800.0, 630.0)
@@ -90,16 +90,16 @@ fn apply_platform_config(
     b
 }
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 pub fn focus_window(window: &tauri::WebviewWindow) {
     let _ = window.show();
     let _ = window.unminimize();
     let _ = window.set_focus();
 }
 
-#[cfg(not(feature = "web-server"))]
-pub fn present_main_window(app: &tauri::AppHandle) {
-    use tauri::Manager;
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
+pub fn present_main_window(app: &crate::runtime::AppHandle) {
+    use crate::runtime::Manager;
     if let Some(window) = app.get_webview_window("main") {
         focus_window(&window);
         #[cfg(target_os = "macos")]
@@ -109,8 +109,8 @@ pub fn present_main_window(app: &tauri::AppHandle) {
     }
 }
 
-#[cfg(not(feature = "web-server"))]
-pub fn create_app_window(app_handle: tauri::AppHandle) {
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
+pub fn create_app_window(app_handle: crate::runtime::AppHandle) {
     let builder =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
             .title("RClone Manager");
@@ -137,12 +137,12 @@ pub struct WindowOptions {
     pub path: Option<String>,
 }
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 use crate::core::bridge;
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 #[bridge]
-pub async fn new_window(app_handle: tauri::AppHandle, opts: WindowOptions) -> bool {
+pub async fn new_window(app_handle: crate::runtime::AppHandle, opts: WindowOptions) -> bool {
     if let Some(existing) = tauri::Manager::get_webview_window(&app_handle, &opts.label) {
         focus_window(&existing);
 

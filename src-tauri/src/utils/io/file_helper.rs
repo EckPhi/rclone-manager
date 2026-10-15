@@ -85,7 +85,7 @@ pub async fn get_folder_location(
 }
 
 #[bridge]
-pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
+pub async fn open_in_files(app: crate::runtime::AppHandle, path: String) -> Result<String, String> {
     let clean_path = path.trim();
     if clean_path.is_empty() {
         return Err(crate::localized_error!("backendErrors.file.invalidPath"));
@@ -148,7 +148,7 @@ pub async fn open_file_natively(
     file_name: String,
     is_local: bool,
 ) -> Result<String, String> {
-    use tauri::Manager;
+    use crate::runtime::Manager;
 
     let clean_file_name = std::path::Path::new(&file_name)
         .file_name()
@@ -240,7 +240,7 @@ pub async fn open_file_natively(
 /// Removes all temporary preview/viewer files cached in `app_cache_dir()/temp_views`.
 /// Called during app startup and shutdown.
 pub fn cleanup_temp_views(app: &AppHandle) {
-    use tauri::Manager;
+    use crate::runtime::Manager;
     if let Ok(cache_dir) = app.path().app_cache_dir() {
         let temp_views_dir = cache_dir.join("temp_views");
         if temp_views_dir.exists() {

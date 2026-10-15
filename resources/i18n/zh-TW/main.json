@@ -2948,7 +2948,8 @@
       "automationNotFound": "未找到自動化"
     },
     "system": {
-      "unlockFailed": "解鎖失敗：{{error}}"
+      "unlockFailed": "解鎖失敗：{{error}}",
+      "managedRestartRequired": "請透過套件管理員重新啟動此服務。"
     },
     "remote": {
       "configFailed": "設定遠端連線失敗：{{error}}",

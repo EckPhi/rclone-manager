@@ -11,9 +11,24 @@ pub fn migrate_remote_sub_settings(val: Value) -> Value {
 
 /// Creates a new `AppSettingsManager` with all necessary sub-settings.
 pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, String> {
-    rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
-        .with_config_dir(config_dir)
-        .with_env_credentials()
+    let builder =
+        rcman::SettingsManager::builder(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+            .with_config_dir(config_dir);
+    #[cfg(not(feature = "native-headless"))]
+    let builder = builder.with_env_credentials();
+    #[cfg(feature = "native-headless")]
+    let builder = {
+        let source = if let Some(path) = std::env::var_os("RCLONE_MANAGER_SECRET_FILE") {
+            rcman::SecretPasswordSource::file(path)
+        } else {
+            rcman::SecretPasswordSource::env("RCLONE_MANAGER_SECRET")
+        };
+        let backend = native_credential_backend(config_dir, &source)?;
+        builder.with_credential_config(rcman::CredentialConfig::Custom(std::sync::Arc::new(
+            backend,
+        )))
+    };
+    builder
         .with_schema::<AppSettings>()
         .with_sub_settings(
             rcman::SubSettingsConfig::new("remotes")
@@ -45,6 +60,67 @@ pub fn create_settings_manager(config_dir: &Path) -> Result<AppSettingsManager, 
         )
         .build()
         .map_err(|e| format!("Failed to create rcman settings manager: {e}"))
+}
+
+#[cfg(feature = "native-headless")]
+fn native_credential_backend(
+    config_dir: &Path,
+    source: &rcman::SecretPasswordSource,
+) -> Result<rcman::EncryptedFileBackend, String> {
+    let password = source
+        .resolve()
+        .map_err(|error| format!("Failed to load credential master password: {error}"))?;
+    if password.is_empty() {
+        return Err("Credential master password must not be empty".to_string());
+    }
+    rcman::EncryptedFileBackend::with_password(config_dir.join("secrets.enc.json"), &password)
+        .map_err(|error| format!("Failed to initialize encrypted credentials: {error}"))
+}
+
+#[cfg(all(test, feature = "native-headless"))]
+mod native_tests {
+    use super::*;
+    use rcman::CredentialBackend;
+
+    #[test]
+    fn credentials_survive_restart_encrypted_and_reject_wrong_password() {
+        let directory = tempfile::tempdir().unwrap();
+        let source = rcman::SecretPasswordSource::provided("test master password");
+        let backend = native_credential_backend(directory.path(), &source).unwrap();
+        backend.store("test-key", "secret-token-value").unwrap();
+        drop(backend);
+        let persisted = std::fs::read_to_string(directory.path().join("secrets.enc.json")).unwrap();
+        assert!(!persisted.contains("secret-token-value"));
+        let backend = native_credential_backend(directory.path(), &source).unwrap();
+        assert_eq!(
+            backend.get("test-key").unwrap().as_deref(),
+            Some("secret-token-value")
+        );
+        assert!(backend.get("missing-key").unwrap().is_none());
+        assert!(
+            native_credential_backend(
+                directory.path(),
+                &rcman::SecretPasswordSource::provided("wrong password")
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn empty_master_password_returns_error() {
+        let directory = tempfile::tempdir().unwrap();
+        assert!(
+            native_credential_backend(directory.path(), &rcman::SecretPasswordSource::provided(""))
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn missing_master_password_file_returns_error() {
+        let directory = tempfile::tempdir().unwrap();
+        let source = rcman::SecretPasswordSource::file(directory.path().join("missing-master-key"));
+        assert!(native_credential_backend(directory.path(), &source).is_err());
+    }
 }
 
 #[cfg(test)]

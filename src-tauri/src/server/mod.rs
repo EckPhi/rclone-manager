@@ -2,17 +2,20 @@ pub mod handlers;
 mod routes;
 mod state;
 
+#[cfg(all(test, feature = "native-headless"))]
+mod native_tests;
+
 pub use routes::*;
 pub use state::*;
 
 use std::{collections::HashSet, sync::Arc};
 
+use crate::runtime::path::BaseDirectory;
+use crate::runtime::{AppHandle, Manager};
 use axum::{Router, http::Method, routing::get};
 use axum_server::tls_rustls::RustlsConfig;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use log::info;
-use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};

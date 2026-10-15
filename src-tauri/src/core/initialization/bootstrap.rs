@@ -1,7 +1,7 @@
 use crate::core::settings::AppSettingsManager;
 use crate::rclone::backend::BackendManager;
+use crate::runtime::{AppHandle, Manager};
 use log::{debug, error, info};
-use tauri::{AppHandle, Manager};
 
 /// Phase 1: Bootstrap - Initializes basic state, event listeners, and environment
 pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
@@ -24,7 +24,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     init_engine(app_handle).await?;
 
     // Initialize native system theme detection
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     crate::utils::app::ui::init_system_theme();
 
     // Monitor Network Changes (Background task)
@@ -36,7 +36,7 @@ pub async fn init_all(app_handle: &AppHandle) -> Result<(), String> {
     }
 
     // Monitor OS Theme Changes (Background task)
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     crate::utils::app::ui::monitor_theme_changes();
 
     Ok(())

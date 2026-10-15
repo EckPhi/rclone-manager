@@ -2,8 +2,8 @@
 //!
 //! These commands are available via both desktop and headless modes.
 
+use crate::runtime::AppHandle;
 use serde::Serialize;
-use tauri::AppHandle;
 
 use crate::core::{bridge, paths::AppPaths};
 
@@ -27,13 +27,16 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
     let paths = AppPaths::from_app_handle(&app)?;
 
     // Runtime mode (build-time selected, but user-visible as runtime behavior)
-    let mode = if cfg!(feature = "web-server") {
+    let mode = if cfg!(any(feature = "web-server", feature = "native-headless")) {
         "headless"
     } else {
         "desktop"
     };
 
+    #[cfg(not(feature = "native-headless"))]
     let app_version = app.package_info().version.to_string();
+    #[cfg(feature = "native-headless")]
+    let app_version = env!("CARGO_PKG_VERSION").to_owned();
 
     Ok(DebugInfo {
         logs_dir: paths.logs_dir.to_string_lossy().to_string(),
@@ -49,7 +52,7 @@ pub fn get_debug_info(app: AppHandle) -> Result<DebugInfo, String> {
 /// Open `WebView` developer tools
 #[bridge]
 #[cfg(all(
-    not(feature = "web-server"),
+    not(any(feature = "web-server", feature = "native-headless")),
     not(target_os = "android"),
     not(target_os = "ios")
 ))]

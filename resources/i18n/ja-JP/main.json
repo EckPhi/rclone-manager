@@ -2907,7 +2907,8 @@
       "automationNotFound": "自動化が見つかりません"
     },
     "system": {
-      "unlockFailed": "ロック解除に失敗しました: {{error}}"
+      "unlockFailed": "ロック解除に失敗しました: {{error}}",
+      "managedRestartRequired": "パッケージマネージャーからこのサービスを再起動してください。"
     },
     "remote": {
       "configFailed": "リモートの設定に失敗しました: {{error}}",

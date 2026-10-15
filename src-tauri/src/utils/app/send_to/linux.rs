@@ -58,7 +58,7 @@ pub fn register(
     let home = get_home_dir()?;
     let paths = LinuxPaths::new(&home);
     let exec_path = if cfg!(feature = "flatpak") {
-        let default_app_id = if cfg!(feature = "web-server") {
+        let default_app_id = if cfg!(any(feature = "web-server", feature = "native-headless")) {
             format!("{}.headless", crate::utils::app::platform::APP_ID)
         } else {
             crate::utils::app::platform::APP_ID.to_string()

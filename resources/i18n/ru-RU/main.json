@@ -2907,7 +2907,8 @@
       "automationNotFound": "Автоматизация не найдена"
     },
     "system": {
-      "unlockFailed": "Не удалось разблокировать: {{error}}"
+      "unlockFailed": "Не удалось разблокировать: {{error}}",
+      "managedRestartRequired": "Перезапустите эту службу через менеджер пакетов."
     },
     "remote": {
       "configFailed": "Не удалось настроить подключение: {{error}}",

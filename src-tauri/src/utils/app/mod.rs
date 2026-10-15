@@ -12,5 +12,5 @@ pub mod send_to;
 #[cfg(feature = "updater")]
 pub mod updater;
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 pub mod protocol;

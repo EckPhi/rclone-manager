@@ -4,11 +4,11 @@
 //! (config, cache, logs) across the entire codebase. Supports both
 //! standard and portable mode.
 
+use crate::runtime::AppHandle;
 #[cfg(feature = "portable")]
 use log::info;
 use serde::Serialize;
 use std::path::PathBuf;
-use tauri::AppHandle;
 
 // Portable Mode Helpers
 
@@ -67,7 +67,7 @@ impl AppPaths {
     /// Uses system directories via Tauri's path resolver.
     #[cfg(not(feature = "portable"))]
     pub fn from_app_handle(app: &AppHandle) -> Result<Self, String> {
-        use tauri::Manager;
+        use crate::runtime::Manager;
         let cli_args = app.state::<crate::core::cli::CliArgs>();
 
         // Get cache directory (CLI > ENV > DEFAULT)
@@ -116,7 +116,7 @@ impl AppPaths {
         };
 
         // Resource directory (fallback to cache/resources for mobile)
-        let resource_dir = tauri::Manager::path(app)
+        let resource_dir = crate::runtime::Manager::path(app)
             .resource_dir()
             .ok()
             .filter(|p| p.exists())

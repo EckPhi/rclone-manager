@@ -1,4 +1,4 @@
-#![cfg(not(feature = "web-server"))]
+#![cfg(not(any(feature = "web-server", feature = "native-headless")))]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::core::bridge;
@@ -27,7 +27,7 @@ pub async fn set_theme(
 
     #[cfg(feature = "tray")]
     {
-        use tauri::Manager;
+        use crate::runtime::Manager;
         let app = window.app_handle().clone();
         crate::utils::spawn(async move {
             if let Err(e) = crate::core::tray::core::update_tray_menu(app).await {

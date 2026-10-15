@@ -2948,7 +2948,8 @@
       "automationNotFound": "Otomasyon bulunamadı"
     },
     "system": {
-      "unlockFailed": "Kilit açma başarısız: {{error}}"
+      "unlockFailed": "Kilit açma başarısız: {{error}}",
+      "managedRestartRequired": "Bu hizmeti paket yöneticiniz üzerinden yeniden başlatın."
     },
     "remote": {
       "configFailed": "Uzak bağlantı yapılandırılamadı: {{error}}",

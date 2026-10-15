@@ -1,8 +1,8 @@
 #![cfg(feature = "librclone")]
 
+use crate::runtime::{AppHandle, Manager};
 use async_trait::async_trait;
 use serde_json::{Map, Value};
-use tauri::{AppHandle, Manager};
 
 use crate::rclone::backend::transport::{BackendError, TransportKind};
 use crate::rclone::backend::{BackendManager, RcloneTransport, rclone_ffi};

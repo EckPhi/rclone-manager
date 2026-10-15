@@ -8,7 +8,7 @@ use syn::{ItemFn, parse_macro_input};
 pub fn bridge(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let output = quote! {
-        #[cfg_attr(not(feature = "web-server"), tauri::command)]
+        #[cfg_attr(not(any(feature = "web-server", feature = "native-headless")), tauri::command)]
         #input
     };
     output.into()

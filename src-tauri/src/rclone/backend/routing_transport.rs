@@ -1,8 +1,8 @@
+use crate::runtime::AppHandle;
+#[cfg(feature = "librclone")]
+use crate::runtime::Manager;
 use async_trait::async_trait;
 use serde_json::Value;
-use tauri::AppHandle;
-#[cfg(feature = "librclone")]
-use tauri::Manager;
 use tokio::io::AsyncRead;
 
 #[cfg(feature = "librclone")]

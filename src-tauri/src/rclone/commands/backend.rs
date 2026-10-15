@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use crate::runtime::{AppHandle, Manager};
 use log::{debug, info, warn};
-use tauri::{AppHandle, Manager};
 
 use crate::{
     core::{automation::engine::AutomationScheduler, bridge, settings::AppSettingsManager},

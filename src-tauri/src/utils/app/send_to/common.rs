@@ -23,7 +23,7 @@ pub fn get_sanitized_name(remote: &str, path: Option<&str>) -> String {
         })
         .unwrap_or_default();
 
-    let app_suffix = if cfg!(feature = "web-server") {
+    let app_suffix = if cfg!(any(feature = "web-server", feature = "native-headless")) {
         " (RClone Manager Headless)"
     } else {
         " (RClone Manager)"

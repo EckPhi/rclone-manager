@@ -92,7 +92,7 @@ pub struct GeneralSettings {
         label = "settings.general.standalone_dialogs.label",
         description = "settings.general.standalone_dialogs.description"
     )]
-    #[cfg(all(desktop, not(feature = "web-server")))]
+    #[cfg(all(desktop, not(any(feature = "web-server", feature = "native-headless"))))]
     pub standalone_dialogs: bool,
 
     #[setting(
@@ -129,7 +129,7 @@ impl Default for GeneralSettings {
             notifications: true,
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             start_on_startup: false,
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(all(desktop, not(any(feature = "web-server", feature = "native-headless"))))]
             standalone_dialogs: false,
             #[cfg(all(desktop, not(any(target_os = "android", target_os = "ios"))))]
             prevent_sleep: true,
@@ -259,7 +259,7 @@ pub struct DeveloperSettings {
         label = "settings.developer.destroy_window_on_close.label",
         description = "settings.developer.destroy_window_on_close.description"
     )]
-    #[cfg(all(not(feature = "web-server"), desktop))]
+    #[cfg(all(not(any(feature = "web-server", feature = "native-headless")), desktop))]
     pub destroy_window_on_close: bool,
 }
 
@@ -267,7 +267,7 @@ impl Default for DeveloperSettings {
     fn default() -> Self {
         Self {
             log_level: "info".to_string(),
-            #[cfg(all(not(feature = "web-server"), desktop))]
+            #[cfg(all(not(any(feature = "web-server", feature = "native-headless")), desktop))]
             destroy_window_on_close: true,
         }
     }

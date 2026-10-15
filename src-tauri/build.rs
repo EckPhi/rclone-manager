@@ -124,6 +124,9 @@ fn main() {
         println!("cargo:rerun-if-changed={}/librclone/", rclone_src_dir);
     }
 
+    println!("cargo:rustc-check-cfg=cfg(desktop)");
+    println!("cargo:rustc-check-cfg=cfg(mobile)");
+    #[cfg(not(feature = "native-headless"))]
     tauri_build::build();
 }
 

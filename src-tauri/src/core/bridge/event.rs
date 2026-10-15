@@ -7,7 +7,10 @@
 use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
-#[cfg(any(not(feature = "web-server"), feature = "tray"))]
+#[cfg(any(
+    not(any(feature = "web-server", feature = "native-headless")),
+    feature = "tray"
+))]
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
@@ -24,8 +27,11 @@ static GLOBAL_EVENT_BRIDGE: OnceCell<Arc<EventBridge>> = OnceCell::new();
 /// Manages event subscriptions and distribution across desktop IPC and web-server SSE.
 pub struct EventBridge {
     tx: broadcast::Sender<BridgeEvent>,
-    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
-    app_handle: Arc<RwLock<Option<tauri::AppHandle>>>,
+    #[cfg(any(
+        not(any(feature = "web-server", feature = "native-headless")),
+        feature = "tray"
+    ))]
+    app_handle: Arc<RwLock<Option<crate::runtime::AppHandle>>>,
 }
 
 impl EventBridge {
@@ -34,20 +40,26 @@ impl EventBridge {
         let (tx, _) = broadcast::channel(capacity);
         Self {
             tx,
-            #[cfg(any(not(feature = "web-server"), feature = "tray"))]
+            #[cfg(any(
+                not(any(feature = "web-server", feature = "native-headless")),
+                feature = "tray"
+            ))]
             app_handle: Arc::new(RwLock::new(None)),
         }
     }
 
     /// Associates the desktop Tauri `AppHandle` with this bridge.
-    #[cfg(any(not(feature = "web-server"), feature = "tray"))]
-    pub fn set_app_handle(&self, app_handle: tauri::AppHandle) {
+    #[cfg(any(
+        not(any(feature = "web-server", feature = "native-headless")),
+        feature = "tray"
+    ))]
+    pub fn set_app_handle(&self, app_handle: crate::runtime::AppHandle) {
         *self.app_handle.write() = Some(app_handle);
     }
 
     /// Returns the associated desktop Tauri `AppHandle` if available.
     #[cfg(feature = "tray")]
-    pub fn get_app_handle(&self) -> Option<tauri::AppHandle> {
+    pub fn get_app_handle(&self) -> Option<crate::runtime::AppHandle> {
         self.app_handle.read().clone()
     }
 
@@ -72,7 +84,7 @@ impl EventBridge {
         let _ = self.tx.send(bridge_event);
 
         // Forward to desktop webview IPC if running in desktop mode
-        #[cfg(not(feature = "web-server"))]
+        #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
         {
             if let Some(ref app) = *self.app_handle.read() {
                 use tauri::Emitter;
@@ -105,7 +117,7 @@ pub fn subscribe() -> Option<broadcast::Receiver<BridgeEvent>> {
 
 /// Returns the associated desktop Tauri `AppHandle` if available.
 #[cfg(feature = "tray")]
-pub fn get_app_handle() -> Option<tauri::AppHandle> {
+pub fn get_app_handle() -> Option<crate::runtime::AppHandle> {
     GLOBAL_EVENT_BRIDGE.get().and_then(|b| b.get_app_handle())
 }
 

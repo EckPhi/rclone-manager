@@ -2907,7 +2907,8 @@
       "automationNotFound": "Automatización no encontrada"
     },
     "system": {
-      "unlockFailed": "Desbloqueo fallido: {{error}}"
+      "unlockFailed": "Desbloqueo fallido: {{error}}",
+      "managedRestartRequired": "Reinicia este servicio desde el gestor de paquetes."
     },
     "remote": {
       "configFailed": "Error al configurar el remoto: {{error}}",

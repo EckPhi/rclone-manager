@@ -1,4 +1,5 @@
 use crate::core::{bridge, lifecycle::shutdown::handle_shutdown, settings::AppSettingsManager};
+use crate::runtime::{AppHandle, Manager};
 use crate::utils::github_client::{OWNER, REPO};
 use crate::utils::types::{
     events::APP_EVENT,
@@ -12,7 +13,6 @@ use crate::utils::{
     github_client,
 };
 use log::{debug, info, warn};
-use tauri::{AppHandle, Manager};
 use tauri_plugin_updater::UpdaterExt;
 
 fn emit_progress(status: DownloadStatus) {
@@ -221,12 +221,12 @@ pub async fn get_app_update_info(app: AppHandle) -> Result<Option<UpdateInfo>> {
 fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bool {
     let tag = release.tag_name.to_lowercase();
 
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     if !tag.starts_with("headless-") {
         return false;
     }
 
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     if tag.starts_with("headless-") {
         return false;
     }

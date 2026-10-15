@@ -14,24 +14,24 @@ macro_rules! MASTER_COMMAND_LIST {
         $action! {
             // FILE OPERATIONS (Utils)
             // File Picker / System Interaction
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (open_in_files, $crate::utils::io::file_helper::open_in_files, [path: String]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (open_file_natively, $crate::utils::io::file_helper::open_file_natively, [remote: String, path: String, file_name: String, is_local: bool]);
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(all(desktop, not(any(feature = "web-server", feature = "native-headless"))))]
             (get_folder_location, $crate::utils::io::file_helper::get_folder_location, [require_empty: bool]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (get_file_location, $crate::utils::io::file_helper::get_file_location, []);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (get_files_location, $crate::utils::io::file_helper::get_files_location, []);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (get_save_file_location, $crate::utils::io::file_helper::get_save_file_location, [default_name: Option<String>]);
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (download_file, $crate::utils::io::file_helper::download_file, [remote: String, path: String, destination: String, total_size: Option<u64>, is_local: bool]);
 
             // UI & THEME
             // UI / Theming (Desktop Only)
-            #[cfg(not(feature = "web-server"))]
+            #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
             (set_theme, $crate::utils::app::ui::set_theme, [theme: String, system_is_dark: Option<bool>]);
             (get_rclone_rc_url, $crate::rclone::queries::get_rclone_rc_url, []);
 
@@ -321,9 +321,9 @@ macro_rules! MASTER_COMMAND_LIST {
             (get_debug_info, $crate::core::debug::get_debug_info, [], [sync]);
 
             // DESKTOP ONLY
-            #[cfg(all(not(feature = "web-server"), not(target_os = "android"), not(target_os = "ios")))]
+            #[cfg(all(not(any(feature = "web-server", feature = "native-headless")), not(target_os = "android"), not(target_os = "ios")))]
             (open_devtools, $crate::core::debug::open_devtools, [], [sync, no_app]);
-            #[cfg(all(desktop, not(feature = "web-server")))]
+            #[cfg(all(desktop, not(any(feature = "web-server", feature = "native-headless"))))]
             (new_window, $crate::utils::app::builder::new_window, [opts: $crate::utils::app::builder::WindowOptions]);
         }
     }
@@ -341,7 +341,7 @@ macro_rules! tauri_handler_gen {
     }
 }
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 pub fn dispatch_invoke(invoke: tauri::ipc::Invoke<tauri::Wry>) -> bool {
     let handler: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool =
         crate::MASTER_COMMAND_LIST!(tauri_handler_gen);
@@ -387,11 +387,11 @@ macro_rules! call_internal_complex {
 }
 
 /// Helper macro to generate the Axum bridge dispatcher.
-#[cfg(feature = "web-server")]
+#[cfg(any(feature = "web-server", feature = "native-headless"))]
 macro_rules! axum_bridge_gen {
     ($( $(#[$meta:meta])? ($name:ident, $path:path, [$($arg:ident : $typ:ty),*] $(, [$($tag:ident),*])?) );* $(;)?) => {
         pub async fn bridge_dispatch(
-            app: &tauri::AppHandle,
+            app: &crate::runtime::AppHandle,
             command: &str,
             payload: serde_json::Value
         ) -> Result<serde_json::Value, String> {
@@ -435,5 +435,5 @@ macro_rules! axum_bridge_gen {
 }
 
 // A unified dispatch function that can be used by the web server bridge.
-#[cfg(feature = "web-server")]
+#[cfg(any(feature = "web-server", feature = "native-headless"))]
 MASTER_COMMAND_LIST!(axum_bridge_gen);

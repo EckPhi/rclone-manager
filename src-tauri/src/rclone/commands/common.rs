@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use crate::runtime::{AppHandle, Manager};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use tauri::{AppHandle, Manager};
 
 use crate::{
     core::settings::AppSettingsManager,

@@ -1,14 +1,14 @@
 use std::path::{Path, PathBuf};
 
 /// Display label shown in the Windows context menu submenu header.
-const CONTEXT_MENU_LABEL: &str = if cfg!(feature = "web-server") {
+const CONTEXT_MENU_LABEL: &str = if cfg!(any(feature = "web-server", feature = "native-headless")) {
     "RClone Manager Headless"
 } else {
     "RClone Manager"
 };
 
 /// Registry sub-key name — must differ between desktop and headless so both can coexist.
-const REGISTRY_KEY: &str = if cfg!(feature = "web-server") {
+const REGISTRY_KEY: &str = if cfg!(any(feature = "web-server", feature = "native-headless")) {
     "RCloneManagerHeadless"
 } else {
     "RCloneManager"

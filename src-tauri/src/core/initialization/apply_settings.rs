@@ -1,5 +1,5 @@
+use crate::runtime::Manager;
 use log::{debug, error, info};
-use tauri::Manager;
 
 use crate::{
     core::settings::{
@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Apply core settings on startup (bandwidth limits, backend options, language, and log level)
-pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSettings) {
+pub async fn apply_core_settings(app_handle: &crate::runtime::AppHandle, settings: &AppSettings) {
     // Bandwidth Limits
     if !settings.core.bandwidth_limit.is_empty() {
         debug!(
@@ -40,7 +40,7 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
 }
 
 /// Apply `RClone` backend settings from rcman settings in a single bulk API request
-pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(), String> {
+pub async fn apply_backend_settings(app_handle: &crate::runtime::AppHandle) -> Result<(), String> {
     debug!("🔧 Applying RClone backend settings from rcman");
 
     let manager = app_handle.state::<AppSettingsManager>();

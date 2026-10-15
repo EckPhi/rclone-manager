@@ -1,6 +1,6 @@
+use crate::runtime::AppHandle;
 use log::debug;
 use serde_json::{Value, json};
-use tauri::AppHandle;
 
 use crate::core::bridge;
 use crate::utils::json_helpers::normalize_windows_path;

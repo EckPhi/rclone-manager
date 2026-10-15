@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+umask 077
+: "${SYNOPKG_PKGVAR:?DSM persistent package data directory is required}"
+mkdir -p "$SYNOPKG_PKGVAR"
+# DSM preserves PKGVAR across upgrades; never overwrite existing credentials.
+if [ ! -f "$SYNOPKG_PKGVAR/password" ]; then
+    printf '%s' 'admin' > "$SYNOPKG_PKGVAR/password"
+fi
+chmod 600 "$SYNOPKG_PKGVAR/password"
+[ -s "$SYNOPKG_PKGVAR/password" ]

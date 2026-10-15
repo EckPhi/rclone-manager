@@ -12,6 +12,7 @@ fn main() {
     rclone_manager_lib::utils::init_runtime_handle(runtime.handle().clone());
     let _guard = runtime.enter();
 
+    #[cfg(not(feature = "native-headless"))]
     tauri::async_runtime::set(runtime.handle().clone());
 
     rclone_manager_lib::run();

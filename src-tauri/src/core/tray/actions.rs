@@ -1,6 +1,6 @@
 use crate::core::settings::AppSettingsManager;
+use crate::runtime::{AppHandle, Manager};
 use log::{error, info};
-use tauri::{AppHandle, Manager};
 
 use crate::utils::spawn;
 use crate::utils::types::origin::Origin;
@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 pub fn show_main_window(app: AppHandle) {
     info!("Presenting main window");
     crate::utils::app::builder::present_main_window(&app);
@@ -266,7 +266,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
     });
 }
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 pub fn handle_browse_remote(app: &AppHandle, remote_name: &str, profile_name: &str) {
     use tauri_plugin_opener::OpenerExt;
     let remote = remote_name.to_string();
@@ -285,7 +285,7 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str, profile_name: &s
     });
 }
 
-#[cfg(not(feature = "web-server"))]
+#[cfg(not(any(feature = "web-server", feature = "native-headless")))]
 pub fn handle_browse_in_app(app: &AppHandle, remote_name: Option<&str>) {
     info!(
         "Opening in-app browser{}",

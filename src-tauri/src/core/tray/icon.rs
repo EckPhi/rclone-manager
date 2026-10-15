@@ -77,11 +77,11 @@ impl TrayIconKind {
 }
 
 pub(crate) fn is_system_dark() -> bool {
-    #[cfg(not(feature = "web-server"))]
+    #[cfg(not(any(feature = "web-server", feature = "native-headless")))]
     {
         crate::utils::app::ui::is_system_dark()
     }
-    #[cfg(feature = "web-server")]
+    #[cfg(any(feature = "web-server", feature = "native-headless"))]
     {
         true
     }
