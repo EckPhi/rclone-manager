@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+umask 077
+: "${SYNOPKG_PKGVAR:?DSM persistent package data directory is required}"
+mkdir -p "$SYNOPKG_PKGVAR"
+# Keep the legacy encrypted store as a backup; rcman now defaults to secrets.enc.
+legacy_store="$SYNOPKG_PKGVAR/secrets.enc.json"
+current_store="$SYNOPKG_PKGVAR/secrets.enc"
+if [ -e "$legacy_store" ] || [ -L "$legacy_store" ]; then
+    if [ ! -f "$legacy_store" ] || [ -L "$legacy_store" ] || [ -L "$current_store" ]; then
+        echo 'Cannot migrate encrypted credentials: expected regular files' >&2
+        exit 1
+    fi
+    if [ ! -e "$current_store" ]; then
+        migration_tmp=$(mktemp "$SYNOPKG_PKGVAR/.secrets-migrate.XXXXXX")
+        if ! cp "$legacy_store" "$migration_tmp" || ! ln "$migration_tmp" "$current_store"; then
+            rm -f "$migration_tmp"
+            echo 'Cannot copy legacy encrypted credentials' >&2
+            exit 1
+        fi
+        rm -f "$migration_tmp"
+    fi
+    [ -f "$current_store" ] || { echo 'Encrypted credential destination is not a regular file' >&2; exit 1; }
+    chmod 600 "$legacy_store" "$current_store"
+fi
+# DSM preserves PKGVAR across upgrades; never overwrite existing credentials.
+if [ ! -f "$SYNOPKG_PKGVAR/password" ]; then
+    printf '%s' 'admin' > "$SYNOPKG_PKGVAR/password"
+fi
+chmod 600 "$SYNOPKG_PKGVAR/password"
+[ -s "$SYNOPKG_PKGVAR/password" ]

@@ -34,6 +34,15 @@ requires FUSE. They are not static binaries for Alpine/musl.
 The Dockerfile builds the pure server.
 See [platform TODOs](https://github.com/Zarestia-Dev/rclone-manager/blob/master/backend/TODO.md) for additional targets still under review.
 
+## Native Synology DSM package (experimental)
+
+The [native DSM package](../../synology/README.md) targets the DS920+ on DSM 7.2.1
+without Container Manager or desktop libraries. It uses the standalone server
+and the existing first-run rclone installation flow; settings and downloaded
+executables persist across SPK upgrades. See the linked guide for installation,
+authentication and shared-folder permissions. Physical NAS acceptance testing
+remains required.
+
 ## Quick start with Docker
 
 ```bash

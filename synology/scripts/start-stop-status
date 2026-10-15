@@ -1,0 +1,74 @@
+#!/bin/sh
+# DSM invokes this as the dedicated package account (conf/privilege).
+set -eu
+umask 077
+: "${SYNOPKG_PKGDEST:?DSM package destination is required}"
+: "${SYNOPKG_PKGVAR:?DSM persistent package data directory is required}"
+PID_FILE="$SYNOPKG_PKGVAR/server.pid"
+BINARY="$SYNOPKG_PKGDEST/bin/rclone-manager-server"
+
+running() {
+    [ -f "$PID_FILE" ] || return 1
+    read -r pid < "$PID_FILE" || return 1
+    case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+    [ "$pid" -gt 1 ] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    # Never signal a stale PID that now belongs to an unrelated process.
+    [ "$(readlink "/proc/$pid/exe")" = "$(readlink -f "$BINARY")" ]
+}
+
+initialize() {
+    mkdir -p "$SYNOPKG_PKGVAR/config" "$SYNOPKG_PKGVAR/logs" "$SYNOPKG_PKGVAR/cache"
+    if [ ! -f "$SYNOPKG_PKGVAR/password" ]; then
+        printf '%s' 'admin' > "$SYNOPKG_PKGVAR/password"
+    fi
+    if [ ! -f "$SYNOPKG_PKGVAR/secret" ]; then
+        dd if=/dev/urandom bs=32 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n' > "$SYNOPKG_PKGVAR/secret"
+    fi
+    chmod 600 "$SYNOPKG_PKGVAR/password" "$SYNOPKG_PKGVAR/secret"
+    [ -s "$SYNOPKG_PKGVAR/secret" ] || { echo 'Credential store secret is empty' >&2; return 1; }
+    [ -s "$SYNOPKG_PKGVAR/password" ] || { echo 'Authentication password is empty' >&2; return 1; }
+}
+
+case "${1:-}" in
+    start)
+        if running; then exit 0; fi
+        initialize
+        export PATH="$SYNOPKG_PKGDEST/bin:$PATH"
+        export XDG_CONFIG_HOME="$SYNOPKG_PKGVAR/config"
+        export RCLONE_MANAGER_SECRET_FILE="$SYNOPKG_PKGVAR/secret"
+        export RCLONE_MANAGER_DISABLE_UPDATES=1
+        export RCLONE_MANAGER_HOST=0.0.0.0 RCLONE_MANAGER_PORT=8080
+        export RCLONE_MANAGER_USER=admin
+        RCLONE_MANAGER_PASS=$(cat "$SYNOPKG_PKGVAR/password")
+        export RCLONE_MANAGER_PASS
+        export RCLONE_MANAGER_DATA_DIR="$SYNOPKG_PKGVAR"
+        export RCLONE_MANAGER_LOG_DIR="$SYNOPKG_PKGVAR/logs"
+        export RCLONE_MANAGER_CACHE_DIR="$SYNOPKG_PKGVAR/cache"
+        export RCLONE_CONFIG="$SYNOPKG_PKGVAR/config/rclone.conf"
+        cd "$SYNOPKG_PKGVAR"
+        "$BINARY" >> "$SYNOPKG_PKGVAR/logs/server.log" 2>&1 &
+        echo "$!" > "$PID_FILE"
+        sleep 2
+        running || { echo 'Server failed to start; inspect logs/server.log' >&2; rm -f "$PID_FILE"; exit 1; }
+        ;;
+    stop)
+        if running; then
+            kill "$pid"
+            count=0
+            while running; do
+                count=$((count + 1))
+                if [ "$count" -ge 30 ]; then
+                    echo 'Server did not stop within 30 seconds; refusing to kill forcefully' >&2
+                    exit 1
+                fi
+                sleep 1
+            done
+        fi
+        rm -f "$PID_FILE"
+        ;;
+    status) running || exit 3 ;;
+    prestart) [ -x "$BINARY" ] ;;
+    prestop) exit 0 ;;
+    *) echo "Usage: $0 {start|stop|status|prestart|prestop}" >&2; exit 1 ;;
+esac

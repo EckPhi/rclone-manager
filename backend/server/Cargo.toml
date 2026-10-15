@@ -37,3 +37,10 @@ percent-encoding = "2"
 [dev-dependencies]
 rcman = { workspace = true, features = ["json", "backup"] }
 tower = { version = "0.5", features = ["util"] }
+
+# Build the Secret Service client statically for systems without a packaged libdbus.
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus = { version = "0.9", optional = true, features = ["vendored"] }
+
+[features]
+vendored-dbus = ["dep:dbus"]

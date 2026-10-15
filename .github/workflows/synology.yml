@@ -1,0 +1,61 @@
+name: Synology DSM test package
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+          components: clippy, rustfmt
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y musl-tools pkg-config shellcheck perl make
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Check package tooling
+        run: |
+          python3 -m unittest discover -s synology/tests -v
+          shellcheck -s sh synology/scripts/start-stop-status synology/scripts/postinst
+      - name: Check native backend
+        working-directory: backend
+        run: |
+          cargo fmt -p rclone-manager-server -- --check
+          cargo clippy -p rclone-manager-server --features vendored-dbus --target x86_64-unknown-linux-musl -- -D warnings
+          cargo test -p rclone-manager-core -p rclone-manager-server --features rclone-manager-server/vendored-dbus --lib
+      - name: Build static native server
+        working-directory: backend
+        run: cargo build -p rclone-manager-server --features vendored-dbus --release --target x86_64-unknown-linux-musl
+      - name: Build DSM 7 x86_64 SPK
+        run: |
+          python3 synology/build_spk.py \
+            --arch x86_64 \
+            --binary backend/target/x86_64-unknown-linux-musl/release/rclone-manager-server \
+            --output dist/synology/rclone-manager-0.3.4-1-x86_64.spk
+          sha256sum dist/synology/*.spk > dist/synology/SHA256SUMS
+      - name: Smoke test real Linux package
+        run: sh synology/tests/smoke-linux.sh dist/synology/rclone-manager-0.3.4-1-x86_64.spk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synology-dsm7-x86_64
+          path: |
+            dist/synology/*.spk
+            dist/synology/SHA256SUMS
+          if-no-files-found: error
