@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 60
     env:
       CARGO_TERM_COLOR: always
-      RCLONE_VERSION: 1.75.0
+      PINNED_RCLONE_VERSION: 1.75.0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,18 +50,20 @@ jobs:
           set -euo pipefail
           mkdir -p dist/synology/rclone
           cd dist/synology/rclone
-          archive="rclone-v${RCLONE_VERSION}-linux-amd64.zip"
-          curl --fail --location --retry 3 --output "$archive" "https://downloads.rclone.org/v${RCLONE_VERSION}/$archive"
-          curl --fail --location --retry 3 --output SHA256SUMS "https://downloads.rclone.org/v${RCLONE_VERSION}/SHA256SUMS"
+          archive="rclone-v${PINNED_RCLONE_VERSION}-linux-amd64.zip"
+          curl --fail --location --retry 3 --output "$archive" "https://downloads.rclone.org/v${PINNED_RCLONE_VERSION}/$archive"
+          curl --fail --location --retry 3 --output SHA256SUMS "https://downloads.rclone.org/v${PINNED_RCLONE_VERSION}/SHA256SUMS"
           awk -v archive="$archive" '$2 == archive || $2 == "*" archive { print; found=1 } END { if (!found) exit 1 }' SHA256SUMS > selected.sha256
           sha256sum --check selected.sha256
           unzip -q "$archive"
+          chmod +x "rclone-v${PINNED_RCLONE_VERSION}-linux-amd64/rclone"
+          "./rclone-v${PINNED_RCLONE_VERSION}-linux-amd64/rclone" version
       - name: Build DSM 7 x86_64 SPK
         run: |
           python3 synology/build_spk.py \
             --arch x86_64 \
             --binary src-tauri/target/x86_64-unknown-linux-musl/release/rclone-manager \
-            --rclone "dist/synology/rclone/rclone-v${RCLONE_VERSION}-linux-amd64/rclone" \
+            --rclone "dist/synology/rclone/rclone-v${PINNED_RCLONE_VERSION}-linux-amd64/rclone" \
             --output dist/synology/rclone-manager-0.3.3-2-x86_64.spk
           sha256sum dist/synology/*.spk > dist/synology/SHA256SUMS
       - name: Smoke test real Linux package
